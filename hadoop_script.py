@@ -1,5 +1,4 @@
 from pyspark import SparkContext
-import HiveContext
 
 from scipy.optimize import minimize
 import numpy as np
@@ -144,8 +143,8 @@ def reducer1(final, new):
 
 if __name__ == "__main__":
     sc = SparkContext()
-    spark = HiveContext(sc)
-    rdd = sc.binaryFiles('project/numpy_files/').map(project).reduce(reducer1)
-    np.save('distgrid.npy', rdd[0])
-    np.save('xgrid.npy', rdd[1])
-    np.save('ygrid.npy',rdd[2])
+    rdd = sc.binaryFiles('project/numpy_files/x-1001507.241501_y-219055.073690.npy').map(project).reduce(reducer1)
+    print rdd[0][0]
+    #np.savetxt('photo/distgrid.csv', rdd[0], delimiter = ",")
+    #np.savetxt('photo/xgrid.csv', rdd[1], delimiter = ",")
+    #np.savetxt('photo/ygrid.csv',rdd[2], delimiter = ",")
