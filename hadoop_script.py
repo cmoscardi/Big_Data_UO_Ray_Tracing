@@ -143,7 +143,7 @@ def reducer1(final, new):
 
 if __name__ == "__main__":
     sc = SparkContext()
-    rdd = sc.binaryFiles('project/numpy_files/x-1001507.241501_y-219055.073690.npy').map(project).reduce(reducer1)
+    rdd = sc.binaryFiles('project/numpy_files/x-1001507.241501_y-219055.073690.npy').map(project).reduce(reducer1).cache()
     print rdd[0][0]
     #np.savetxt('photo/distgrid.csv', rdd[0], delimiter = ",")
     #np.savetxt('photo/xgrid.csv', rdd[1], delimiter = ",")
