@@ -3,11 +3,8 @@ import HiveContext
 
 from scipy.optimize import minimize
 import numpy as np
-import pandas as pd
 from random import gauss
 import scipy as sp
-import matplotlib.pyplot as pl
-%matplotlib inline
 
 def distance(xs,ys,zs,x,y,z):
 
@@ -23,16 +20,6 @@ def in_picture(x,y,image_dimensions):
     (y < image_dimensions[1])
 
     return is_in_picture
-
-def center_image_fiducials(dimensions,fiducials):
-
-    ''' Centers image fiducial points using image dimensions  '''
-
-    for i in range(np.shape(fiducials)[0]):
-        fiducials[i,0] = fiducials[i,0] - (dimensions[0] / 2)
-        fiducials[i,1] = (dimensions[1] / 2) - fiducials[i,1]
-
-    return fiducials
 
 def colin(params, xyz_a):
 
@@ -74,96 +61,7 @@ def colin(params, xyz_a):
 
     return np.vstack([xx,yy]).T
 
-def fullfunc(params,xyz_s,xy_t):
-
-    ''' Find the sum of squares difference '''
-    omega, phi, kappa, xs, ys, zs, f = params
-
-
-    if (omega<0.0) or (omega>=2.0*np.pi):
-        return 1e9+omega**4
-    elif (phi<-0.5*np.pi) or (phi>=0.5*np.pi):
-        return 1e9+phi**4
-    elif (kappa<0.0) or (kappa>=2.0*np.pi):
-        return 1e9+kappa**4
-    elif zs<0.0:
-        return 1e9+zs**4
-    elif f<0.0:
-        return 1e9+f**4
-#     elif (np.abs(params[3] - 977119)>1000) or \
-#             (np.abs(params[4] - 210445)>1000):
-#         return 1e9 + xs**2
-
-    colin_xy = 1.0*colin(params,xyz_s.astype(float))
-    diff = ((colin_xy - xy_t)**2).sum()
-    
-    return diff
-
-def call(params,xyz_s,xy_t):
-
-    ''' Guess parameters near start and brute-force minimize '''
-    start = params
-
-    res = minimize(fullfunc, start,args=(xyz_s,xy_t), \
-        method = 'Nelder-Mead', \
-        options={'maxfev': 10000, 'maxiter': 10000})
-
-    return res
-
-guess = np.array([4.48603184, -5.75616093e-02, 0.0115, 987818.3984021898, 214563.46676424053, 800, 3000])
-
-lidar_fiducials = np.array([
-                            [988224.09, 211951.573,1494.756662], #Empire state building
-                            [980598.406, 199043.071,1750.127224], #WTC
-                            [987656.616, 211766.233,493.89], # 1250 Broadway
-                            [983564.98, 199358.775,591.406796], # Marshall courthouse
-                            [987342.468, 212511.054,380.69], #  112 West 34th St
-                            [988596.086, 211789.785,255.31], # 347 5th Ave
-                            [988287.232, 213228.734,488.716947]]) # 66 W 38th St
-
-fiducials = np.array([
-                        [621, 305],#Empire state building
-                        [1683, 936],#WTC
-                        [1185, 1400], # 1250 Broadway
-                        [1217, 1143], # Marshall courthouse
-                        [1860, 1637], #  112 West 34th St
-                        [211, 1704], # 347 5th Ave
-                        [814, 1811]])# 66 W 38th St
-
-
-
-dimensions = np.array([1918, 2560])
-fiducials = center_image_fiducials(dimensions,fiducials)
-
-xyz_s = lidar_fiducials
-xy_t = fiducials
-
-min_score = 100000000000000
-num_iter = 100
-params = guess
-
-for i in range(0, num_iter):
-    result = call(params,xyz_s,xy_t)
-#     print "params, score", result.x, result.fun
-    if (result.fun < min_score):# and (result.x[3] < 980491):
-        min_score = result.fun
-        params = result.x
-
-# print("score  = {0}\nparams = {1}".format(min_score,params))
-
-def getStops(_, part):
-
-#     array = np.frombuffer(bytes(part[1]))
-#     reshaped = array[10:0].reshape(-1,3)
-#     return reshaped.tolist()
-    
-    for fn,contents in part:
-        a = np.fromstring(contents)[10:]
-        reshaped = a.reshape(-1,3)
-        yield reshaped
-        break
-
-def project(dat):  
+def project(part):  
     
    
     # Finds the desired projection
@@ -173,8 +71,16 @@ def project(dat):
 #     else:
 #         params = globparams
 
+    dat = np.frombuffer(bytes(part[1]))
+    dat = dat[10:].reshape(-1,3)
+
+     
+    params = [4.48723386e+00, 5.75616144e-02, 1.14226011e-02, 9.88501080e+05,
+              2.14474001e+05, 7.93662680e+02, 2.84534724e+03]
+
+
     omega, phi, kappa, xs, ys, zs, f = params
-    image_dims = dimensions
+    image_dims = [1918, 2560]
     image_dims_reversed = np.array([image_dims[1], \
         image_dims[0]])
 
@@ -199,10 +105,6 @@ def project(dat):
     xgrid =  -1.*np.ones(image_dims_reversed)
     ygrid = -1.*np.ones(image_dims_reversed)
 
-    
-    final_grids = [np.ones(image_dims_reversed)*(10**8), \
-        -1*np.ones(image_dims_reversed), \
-        -1*np.ones(image_dims_reversed)]
     
     if index.size==0:
         print "no points, returning..."
@@ -229,13 +131,6 @@ def project(dat):
 
     return [distgrid, xgrid, ygrid]
 
-#image_dims = dimensions
-#image_dims_reversed = np.array([image_dims[1], \
-#       image_dims[0]])
-
-#final_grids = [np.ones(image_dims_reversed)*(10**8), \
-#       -1*np.ones(image_dims_reversed), \
-#        -1*np.ones(image_dims_reversed)]
 
 def reducer1(final, new):
     
@@ -246,7 +141,11 @@ def reducer1(final, new):
     out[2] = final[2]*np.logical_not(replace) + new[2]*replace
     return out
 
-sc = SparkContext()                
-spark = HiveContext(sc)
 
-rdd = sc.binaryFiles('numpy_files/').mapPartitionsWithIndex(getStops).map(project).reduce(reducer1)
+if __name__ == "__main__":
+    sc = SparkContext()
+    spark = HiveContext(sc)
+    rdd = sc.binaryFiles('project/numpy_files/').map(project).reduce(reducer1)
+    np.save('distgrid.npy', rdd[0])
+    np.save('xgrid.npy', rdd[1])
+    np.save('ygrid.npy',rdd[2])
