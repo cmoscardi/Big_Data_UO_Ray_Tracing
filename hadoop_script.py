@@ -227,24 +227,15 @@ def project(dat):
             xgrid[ny-y[ii],nx-x[ii]] = dat[ii,0]
             ygrid[ny-y[ii],nx-x[ii]] = dat[ii,1]
 
-            
-    out = [0, 0, 0]
-#     replace = np.greater(final_grids, distgrid)
-#     out[0] = final_grids[0]*np.logical_not(replace) + distgrid[0]*replace
-#     out[1] = final_grids[1]*np.logical_not(replace) + distgrid[1]*replace
-#     out[2] = final_grids[2]*np.logical_not(replace) + distgrid[2]*replace
-#     return out      
-            
-#     print "Done with: ",filename
     return [distgrid, xgrid, ygrid]
 
-image_dims = dimensions
-image_dims_reversed = np.array([image_dims[1], \
-        image_dims[0]])
+#image_dims = dimensions
+#image_dims_reversed = np.array([image_dims[1], \
+#       image_dims[0]])
 
-final_grids = [np.ones(image_dims_reversed)*(10**8), \
-        -1*np.ones(image_dims_reversed), \
-        -1*np.ones(image_dims_reversed)]
+#final_grids = [np.ones(image_dims_reversed)*(10**8), \
+#       -1*np.ones(image_dims_reversed), \
+#        -1*np.ones(image_dims_reversed)]
 
 def reducer1(final, new):
     
