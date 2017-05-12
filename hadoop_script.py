@@ -58,20 +58,19 @@ def colin(params, xyz_a):
 def project(dat):
 
 
-        # Finds the desired projection
+    # Finds the desired projection
 
     params = [1.345794960057916, 0.056072502823257861, -0.012072660480989369, 988504.86108153069,
-              214494.40203705645, 799.41113612974959, 2831.8189679364423]
+                  214494.40203705645, 799.41113612974959, 2831.8189679364423]
 
     omega, phi, kappa, xs, ys, zs, f = params
     image_dims = [1918, 2560]
     image_dims_reversed = np.array([image_dims[1], image_dims[0]])
 
-
-    #     # Multiply by -1 because it apears as inverse; use orient?
+    # Multiply by -1 because it apears as inverse; use orient?
     pixel_xy = 1.0*colin(params, dat)
 
-    #     # un-center pixel (x,y)
+    # un-center pixel (x,y)
     x = image_dims[0]/2 + pixel_xy[:,0].astype(int)
     y = image_dims[1]/2 + pixel_xy[:,1].astype(int)
 
@@ -79,44 +78,44 @@ def project(dat):
 
     index = np.arange(is_in_picture.size)[is_in_picture>0]
 
-    print "npix = ", index.size
-
     distgrid = np.ones(image_dims_reversed)*(100000.0)
     xgrid =  -1.*np.ones(image_dims_reversed)
     ygrid = -1.*np.ones(image_dims_reversed)
 
 
     if index.size==0:
-        print "no points, returning..."
         return [distgrid, xgrid, ygrid]
 
-        n   = distance(xs,ys,zs, dat[index,0],dat[index,1],dat[index,2])
-        x   = x[index]
-        y   = y[index]
-        dat = dat[index]
+    n   = distance(xs,ys,zs, dat[index,0],dat[index,1],dat[index,2])
+    x   = x[index]
+    y   = y[index]
+    dat = dat[index]
 
 
-        # Add each point to the arrays, given it is visibile (vis[i] == 1)
-        # And it is closer to the camera than the current value stored in 
-        # the corresponding pixel of the distance array
+    # Add each point to the arrays, given it is visibile (vis[i] == 1)
+    # And it is closer to the camera than the current value stored in 
+    # the corresponding pixel of the distance array
 
 
     for ii in range(index.size):
         if n[ii]<distgrid[y[ii], x[ii]] and n[ii]>500:
+                
             distgrid[y[ii],x[ii]] = n[ii]
             xgrid[y[ii],x[ii]] = dat[ii,0]
             ygrid[y[ii],x[ii]] = dat[ii,1]
 
     return [distgrid, xgrid, ygrid]
 
-def mapper1(_, part):
+def mapper1(part):
+                    
     for fn, contents in part:
-        reshaped = (np.fromstring(contents)[10:]).reshape(-1,3)
-        rdd = project(reshaped)
-    return rdd
+        reshaped = np.fromstring(contents)[10:]
+        reshaped = reshaped.reshape(-1,3)
+        vals = project(reshaped)
+        yield  vals
 
 
-def reducer1(final, new):
+def  reducer1(final,new):
 
     out = [0, 0, 0]
     replace = np.greater(final[0], new[0])
@@ -125,48 +124,13 @@ def reducer1(final, new):
     out[2] = final[2]*np.logical_not(replace) + new[2]*replace
     return out
 
-def cascade(final_grids):
-# Cascade to fill holes by covering a given point if there is 
-# a closer point above it
-print "Smoothing vertically..."
-    for i in range(0, len(final_grids[0])-1):
-        for j in range(0, len(final_grids[0][0])):
-            if final_grids[0][i][j] < final_grids[0][i + 1][j]:
-                final_grids[0][i+1][j] = final_grids[0][i][j]
-                final_grids[1][i+1][j] = final_grids[1][i][j]
-                final_grids[2][i+1][j] = final_grids[2][i][j]
-
-# Smooth pixels to get rid of vertical bars
-    print "Smoothing horizontally..."
-    for i in range(0, len(final_grids[0])-1):
-        for j in range(1, len(final_grids[0][0])-2):
-            if final_grids[0][i][j] != final_grids[0][i][j-1] and \
-                final_grids[0][i][j+1] == final_grids[0][i][j+1]:
-                final_grids[0][i][j] = final_grids[0][i][j+1]
-                final_grids[1][i][j] = final_grids[1][i][j+1]
-                final_grids[2][i][j] = final_grids[2][i][j+1]
-
-# Smooth pixels two wide
-    print "Smoothing horizontally [2 pixels]..."
-    for i in range(0, len(final_grids[0])-1):
-        for j in range(1, len(final_grids[0][0])-4):
-            if final_grids[0][i][j] != final_grids[0][i][j-1] and \
-                final_grids[0][i][j] == final_grids[0][i][j+1] and \
-                final_grids[0][i][j-1] == final_grids[0][i][j+2]:
-                final_grids[0][i][j] = final_grids[0][i][j+2]
-                final_grids[1][i][j] = final_grids[1][i][j+2]
-                final_grids[2][i][j] = final_grids[2][i][j+2]
-                final_grids[0][i][j+1] = final_grids[0][i][j+2]
-                final_grids[1][i][j+1] = final_grids[1][i][j+2]
-                final_grids[2][i][j+1] = final_grids[2][i][j+2]
-
-    return final_grids
-
 if __name__ == "__main__":
+    
     sc = SparkContext()
-
-    rdd = sc.binaryFiles('project/new_npy/',99).mapPartitionsWithIndex(mapper1).reduce(reducer1)
+    grids = sc.binaryFiles('project/data_npy78/',99).mapPartitions(mapper1).treeReduce(reducer1)
+                
+    np.save('distgrid_new.npy', grids[0])
+    np.save('xgrid_new.npy', grids[1])
+    np.save('ygrid_new.npy', grids[2])
     print "Done"
-    np.save('distgrid_new.npy', rdd[0])
-    np.save('xgrid_new.npy', rdd[1])
-    np.save('ygrid_new.npy',rdd[2])
+
