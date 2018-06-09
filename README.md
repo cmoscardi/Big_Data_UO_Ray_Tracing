@@ -9,4 +9,9 @@ The goal of this project is to produce a generalizable script that would project
 
 ## Please refer the report for further details
 
+### Useful gdal command
+```
+gdal_rasterize -ts 20000 25669 -te 978979.241500825 194479.073690146 1002759.79006824 220148.669988647 -3d DA12_3D_Buildings_Merged.gml DA12.tif
+```
+
 
